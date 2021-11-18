@@ -1,0 +1,241 @@
+networks:
+  mgmt:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-3
+    ipam:
+      config:
+      - subnet: 172.30.0.0/24
+  source-xrd-1:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-4
+    ipam:
+      config:
+      - subnet: 192.168.1.0/24
+  xrd-1-gi1-xrd-2-gi0:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-0
+    internal: true
+    name: xrd-1-gi1-xrd-2-gi0
+  xrd-1-gi2-xrd-3-gi0:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-1
+    internal: true
+    name: xrd-1-gi2-xrd-3-gi0
+  xrd-2-dest:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-5
+    ipam:
+      config:
+      - subnet: 192.168.2.0/24
+  xrd-2-gi2-xrd-3-gi1:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-2
+    internal: true
+    name: xrd-2-gi2-xrd-3-gi1
+  xrd-3-server:
+    driver_opts:
+      com.docker.network.container_iface_prefix: xr-6
+    ipam:
+      config:
+      - subnet: 192.168.3.0/24
+services:
+  dest:
+    cap_add:
+    - NET_ADMIN
+    command: /bin/bash -c "ip route add 192.168.0.0/22 via 192.168.2.254 && /bin/bash"
+    container_name: dest
+    image: ubuntu:14.04
+    networks:
+      xrd-2-dest:
+        ipv4_address: 192.168.2.2
+    stdin_open: true
+    tty: true
+  server:
+    cap_add:
+    - NET_ADMIN
+    command: /bin/bash -c "ip route add 192.168.0.0/22 via 192.168.3.254 && /bin/bash"
+    container_name: server
+    image: ubuntu:14.04
+    networks:
+      xrd-3-server:
+        ipv4_address: 192.168.3.2
+    stdin_open: true
+    tty: true
+  source:
+    cap_add:
+    - NET_ADMIN
+    command: /bin/bash -c "ip route add 192.168.0.0/22 via 192.168.1.254 && /bin/bash"
+    container_name: source
+    image: ubuntu:14.04
+    networks:
+      source-xrd-1:
+        ipv4_address: 192.168.1.2
+    stdin_open: true
+    tty: true
+  xrd-1:
+    cap_add:
+    - CHOWN
+    - DAC_OVERRIDE
+    - FSETID
+    - FOWNER
+    - MKNOD
+    - NET_RAW
+    - SETGID
+    - SETUID
+    - SETFCAP
+    - SETPCAP
+    - NET_BIND_SERVICE
+    - SYS_CHROOT
+    - KILL
+    - AUDIT_WRITE
+    - SYS_NICE
+    - SYS_ADMIN
+    - SYS_RESOURCE
+    - NET_ADMIN
+    - SYS_PTRACE
+    cap_drop:
+    - all
+    container_name: xrd-1
+    devices:
+    - /dev/fuse
+    - /dev/net/tun
+    environment:
+      XR_CHECKSUM_OFFLOAD_COUNTERACT: Gi0/0/0/0,Mg0/RP0/CPU0/0
+      XR_EVERY_BOOT_CONFIG: /startup.cfg
+      XR_INTERFACES: Gi0/0/0/0:xr-40,Gi0/0/0/1:xr-00,Gi0/0/0/2:xr-10,Mg0/RP0/CPU0/0:xr-30
+    image: containers.cisco.com/xrd/xr-dev
+    networks:
+      mgmt: null
+      source-xrd-1:
+        ipv4_address: 192.168.1.254
+      xrd-1-gi1-xrd-2-gi0: null
+      xrd-1-gi2-xrd-3-gi0: null
+    security_opt:
+    - apparmor:unconfined
+    stdin_open: true
+    tmpfs:
+    - /run
+    tty: true
+    volumes:
+    - source: ./xrd-1_xrconf.cfg
+      target: /startup.cfg
+      type: bind
+    - xrd-1:/xr-storage/
+    - read_only: true
+      source: /sys/fs/cgroup
+      target: /sys/fs/cgroup
+      type: bind
+  xrd-2:
+    cap_add:
+    - CHOWN
+    - DAC_OVERRIDE
+    - FSETID
+    - FOWNER
+    - MKNOD
+    - NET_RAW
+    - SETGID
+    - SETUID
+    - SETFCAP
+    - SETPCAP
+    - NET_BIND_SERVICE
+    - SYS_CHROOT
+    - KILL
+    - AUDIT_WRITE
+    - SYS_NICE
+    - SYS_ADMIN
+    - SYS_RESOURCE
+    - NET_ADMIN
+    - SYS_PTRACE
+    cap_drop:
+    - all
+    container_name: xrd-2
+    devices:
+    - /dev/fuse
+    - /dev/net/tun
+    environment:
+      XR_CHECKSUM_OFFLOAD_COUNTERACT: Gi0/0/0/1,Mg0/RP0/CPU0/0
+      XR_EVERY_BOOT_CONFIG: /startup.cfg
+      XR_INTERFACES: Gi0/0/0/0:xr-00,Gi0/0/0/1:xr-50,Gi0/0/0/2:xr-20,Mg0/RP0/CPU0/0:xr-30
+    image: containers.cisco.com/xrd/xr-dev
+    networks:
+      mgmt: null
+      xrd-1-gi1-xrd-2-gi0: null
+      xrd-2-dest:
+        ipv4_address: 192.168.2.254
+      xrd-2-gi2-xrd-3-gi1: null
+    security_opt:
+    - apparmor:unconfined
+    stdin_open: true
+    tmpfs:
+    - /run
+    tty: true
+    volumes:
+    - source: ./xrd-2_xrconf.cfg
+      target: /startup.cfg
+      type: bind
+    - xrd-2:/xr-storage/
+    - read_only: true
+      source: /sys/fs/cgroup
+      target: /sys/fs/cgroup
+      type: bind
+  xrd-3:
+    cap_add:
+    - CHOWN
+    - DAC_OVERRIDE
+    - FSETID
+    - FOWNER
+    - MKNOD
+    - NET_RAW
+    - SETGID
+    - SETUID
+    - SETFCAP
+    - SETPCAP
+    - NET_BIND_SERVICE
+    - SYS_CHROOT
+    - KILL
+    - AUDIT_WRITE
+    - SYS_NICE
+    - SYS_ADMIN
+    - SYS_RESOURCE
+    - NET_ADMIN
+    - SYS_PTRACE
+    cap_drop:
+    - all
+    container_name: xrd-3
+    devices:
+    - /dev/fuse
+    - /dev/net/tun
+    environment:
+      XR_CHECKSUM_OFFLOAD_COUNTERACT: Gi0/0/0/2,Mg0/RP0/CPU0/0
+      XR_EVERY_BOOT_CONFIG: /startup.cfg
+      XR_INTERFACES: Gi0/0/0/0:xr-10,Gi0/0/0/1:xr-20,Gi0/0/0/2:xr-60,Mg0/RP0/CPU0/0:xr-30
+    image: containers.cisco.com/xrd/xr-dev
+    networks:
+      mgmt: null
+      xrd-1-gi2-xrd-3-gi0: null
+      xrd-2-gi2-xrd-3-gi1: null
+      xrd-3-server:
+        ipv4_address: 192.168.3.254
+    security_opt:
+    - apparmor:unconfined
+    stdin_open: true
+    tmpfs:
+    - /run
+    tty: true
+    volumes:
+    - source: ./xrd-3_xrconf.cfg
+      target: /startup.cfg
+      type: bind
+    - xrd-3:/xr-storage/
+    - read_only: true
+      source: /sys/fs/cgroup
+      target: /sys/fs/cgroup
+      type: bind
+version: '3.5'
+volumes:
+  xrd-1:
+    name: xrd-1
+  xrd-2:
+    name: xrd-2
+  xrd-3:
+    name: xrd-3
