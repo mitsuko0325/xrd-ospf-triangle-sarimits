@@ -1,7 +1,7 @@
 # xrd-ospf-triangle-sarimits
 
 # Topology
-
+```
       source
        |
       xrd1
@@ -9,7 +9,7 @@
   xrd2 -- xrd3-server
    |
   dest
-
+```
 # Networks
 
 
